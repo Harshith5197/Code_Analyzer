@@ -15,24 +15,186 @@ interface AnalysisResult {
 
 export class CodeAnalysisEngine {
   private static detectLanguage(code: string): string {
-    const patterns = {
-      javascript: [/function\s+\w+/, /const\s+\w+\s*=/, /let\s+\w+/, /import\s+.+from/, /=>/],
-      typescript: [/interface\s+\w+/, /type\s+\w+\s*=/, /:\s*string|number|boolean/, /as\s+\w+/],
-      python: [/def\s+\w+/, /import\s+\w+/, /from\s+\w+\s+import/, /if\s+__name__\s*==/, /:\s*$/m],
-      java: [/public\s+class/, /private\s+\w+/, /public\s+static\s+void\s+main/, /extends\s+\w+/],
-      cpp: [/#include\s*</, /using\s+namespace/, /int\s+main\s*\(/, /std::/],
-      c: [/#include\s*"/, /int\s+main\s*\(/, /printf\s*\(/, /malloc\s*\(/],
-      csharp: [/using\s+System/, /public\s+class/, /namespace\s+\w+/, /Console\.WriteLine/],
-      go: [/package\s+main/, /func\s+main/, /import\s+\(/, /fmt\./],
-      rust: [/fn\s+main/, /let\s+mut/, /use\s+std::/, /println!/],
-      php: [/<\?php/, /\$\w+/, /function\s+\w+/, /echo\s+/]
+    const codeClean = code.trim().toLowerCase();
+    
+    // Enhanced patterns with weights for more accurate detection
+    const languagePatterns = {
+      python: {
+        patterns: [
+          { regex: /def\s+\w+\s*\(/, weight: 3 },
+          { regex: /import\s+\w+/, weight: 2 },
+          { regex: /from\s+\w+\s+import/, weight: 3 },
+          { regex: /if\s+__name__\s*==\s*['"']__main__['"]/, weight: 4 },
+          { regex: /:\s*$/m, weight: 2 },
+          { regex: /print\s*\(/, weight: 2 },
+          { regex: /elif\s+/, weight: 2 },
+          { regex: /\.append\s*\(/, weight: 2 },
+          { regex: /range\s*\(/, weight: 2 },
+          { regex: /len\s*\(/, weight: 1 }
+        ]
+      },
+      javascript: {
+        patterns: [
+          { regex: /function\s+\w+\s*\(/, weight: 3 },
+          { regex: /const\s+\w+\s*=/, weight: 2 },
+          { regex: /let\s+\w+/, weight: 2 },
+          { regex: /var\s+\w+/, weight: 2 },
+          { regex: /=>\s*[{(]/, weight: 3 },
+          { regex: /console\.log\s*\(/, weight: 3 },
+          { regex: /document\./, weight: 2 },
+          { regex: /window\./, weight: 2 },
+          { regex: /\.forEach\s*\(/, weight: 2 },
+          { regex: /require\s*\(/, weight: 2 }
+        ]
+      },
+      typescript: {
+        patterns: [
+          { regex: /interface\s+\w+/, weight: 4 },
+          { regex: /type\s+\w+\s*=/, weight: 3 },
+          { regex: /:\s*(string|number|boolean|void)/, weight: 3 },
+          { regex: /as\s+\w+/, weight: 2 },
+          { regex: /export\s+(interface|type)/, weight: 3 },
+          { regex: /<[A-Z]\w*>/, weight: 2 },
+          { regex: /public\s+\w+\s*\(/, weight: 2 },
+          { regex: /private\s+\w+\s*:/, weight: 2 }
+        ]
+      },
+      java: {
+        patterns: [
+          { regex: /public\s+class\s+\w+/, weight: 4 },
+          { regex: /public\s+static\s+void\s+main/, weight: 4 },
+          { regex: /private\s+\w+/, weight: 2 },
+          { regex: /protected\s+\w+/, weight: 2 },
+          { regex: /extends\s+\w+/, weight: 3 },
+          { regex: /implements\s+\w+/, weight: 3 },
+          { regex: /System\.out\.print/, weight: 3 },
+          { regex: /new\s+\w+\s*\(/, weight: 2 },
+          { regex: /import\s+java\./, weight: 3 }
+        ]
+      },
+      cpp: {
+        patterns: [
+          { regex: /#include\s*<\w+>/, weight: 3 },
+          { regex: /using\s+namespace\s+std/, weight: 4 },
+          { regex: /int\s+main\s*\(/, weight: 3 },
+          { regex: /std::/, weight: 3 },
+          { regex: /cout\s*<</, weight: 3 },
+          { regex: /cin\s*>>/, weight: 3 },
+          { regex: /vector\s*</, weight: 2 },
+          { regex: /string\s+\w+/, weight: 2 },
+          { regex: /#ifndef|#define|#endif/, weight: 2 }
+        ]
+      },
+      c: {
+        patterns: [
+          { regex: /#include\s*[<"]\w+\.h[>"]/, weight: 3 },
+          { regex: /int\s+main\s*\(/, weight: 3 },
+          { regex: /printf\s*\(/, weight: 3 },
+          { regex: /scanf\s*\(/, weight: 3 },
+          { regex: /malloc\s*\(/, weight: 3 },
+          { regex: /free\s*\(/, weight: 2 },
+          { regex: /struct\s+\w+/, weight: 2 },
+          { regex: /typedef\s+/, weight: 2 }
+        ]
+      },
+      csharp: {
+        patterns: [
+          { regex: /using\s+System/, weight: 3 },
+          { regex: /namespace\s+\w+/, weight: 3 },
+          { regex: /class\s+\w+/, weight: 2 },
+          { regex: /Console\.WriteLine/, weight: 4 },
+          { regex: /public\s+static\s+void\s+Main/, weight: 4 },
+          { regex: /string\[\]\s+args/, weight: 3 },
+          { regex: /\.ToString\s*\(/, weight: 2 }
+        ]
+      },
+      go: {
+        patterns: [
+          { regex: /package\s+main/, weight: 4 },
+          { regex: /func\s+main\s*\(/, weight: 3 },
+          { regex: /import\s+\(/, weight: 3 },
+          { regex: /fmt\./, weight: 3 },
+          { regex: /func\s+\w+\s*\(/, weight: 2 },
+          { regex: /:=/, weight: 2 },
+          { regex: /var\s+\w+\s+\w+/, weight: 2 }
+        ]
+      },
+      rust: {
+        patterns: [
+          { regex: /fn\s+main\s*\(/, weight: 4 },
+          { regex: /let\s+mut\s+/, weight: 3 },
+          { regex: /use\s+std::/, weight: 3 },
+          { regex: /println!\s*\(/, weight: 3 },
+          { regex: /match\s+\w+/, weight: 2 },
+          { regex: /impl\s+/, weight: 2 },
+          { regex: /struct\s+\w+/, weight: 2 }
+        ]
+      },
+      php: {
+        patterns: [
+          { regex: /<\?php/, weight: 4 },
+          { regex: /\$\w+/, weight: 3 },
+          { regex: /function\s+\w+\s*\(/, weight: 2 },
+          { regex: /echo\s+/, weight: 2 },
+          { regex: /->/, weight: 2 },
+          { regex: /array\s*\(/, weight: 2 }
+        ]
+      },
+      ruby: {
+        patterns: [
+          { regex: /def\s+\w+/, weight: 3 },
+          { regex: /end\s*$/, weight: 2 },
+          { regex: /puts\s+/, weight: 2 },
+          { regex: /require\s+['"]/, weight: 2 },
+          { regex: /class\s+\w+/, weight: 2 },
+          { regex: /elsif/, weight: 2 }
+        ]
+      },
+      swift: {
+        patterns: [
+          { regex: /func\s+\w+\s*\(/, weight: 3 },
+          { regex: /var\s+\w+\s*:/, weight: 2 },
+          { regex: /let\s+\w+\s*=/, weight: 2 },
+          { regex: /print\s*\(/, weight: 2 },
+          { regex: /import\s+Foundation/, weight: 3 }
+        ]
+      },
+      kotlin: {
+        patterns: [
+          { regex: /fun\s+main\s*\(/, weight: 4 },
+          { regex: /fun\s+\w+\s*\(/, weight: 3 },
+          { regex: /val\s+\w+/, weight: 2 },
+          { regex: /var\s+\w+/, weight: 2 },
+          { regex: /println\s*\(/, weight: 2 }
+        ]
+      },
+      scala: {
+        patterns: [
+          { regex: /object\s+\w+/, weight: 3 },
+          { regex: /def\s+main\s*\(/, weight: 4 },
+          { regex: /val\s+\w+/, weight: 2 },
+          { regex: /var\s+\w+/, weight: 2 },
+          { regex: /println\s*\(/, weight: 2 }
+        ]
+      }
     };
 
-    for (const [language, regexes] of Object.entries(patterns)) {
-      const matches = regexes.filter(regex => regex.test(code)).length;
-      if (matches >= 2) return language;
+    let bestMatch = { language: 'unknown', score: 0 };
+
+    for (const [language, config] of Object.entries(languagePatterns)) {
+      let score = 0;
+      for (const { regex, weight } of config.patterns) {
+        if (regex.test(codeClean)) {
+          score += weight;
+        }
+      }
+      
+      if (score > bestMatch.score && score >= 3) { // Minimum threshold
+        bestMatch = { language, score };
+      }
     }
-    return 'unknown';
+
+    return bestMatch.language;
   }
 
   private static analyzeTimeComplexity(code: string, language: string): string {
