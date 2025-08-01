@@ -2,8 +2,7 @@
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/57a7eb87-3ae4-44ae-ac8b-f40ff9679a9a
-
+**URL**:https://complexity-dash.lovable.app
 ## How can I edit this code?
 
 There are several ways of editing your application.
