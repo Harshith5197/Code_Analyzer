@@ -1,101 +1,24 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Code, 
-  Upload, 
-  Zap, 
-  Clock, 
-  Database, 
   LogOut,
-  FileText,
-  AlertCircle
+  TrendingUp
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { CodeInputPanel } from "./CodeInputPanel";
+import { MetricsCard } from "./MetricsCard";
+import { SuggestionsPanel } from "./SuggestionsPanel";
 
 interface ComplexityAnalyzerProps {
   onLogout: () => void;
 }
 
 const ComplexityAnalyzer = ({ onLogout }: ComplexityAnalyzerProps) => {
-  const [code, setCode] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [results, setResults] = useState<{
-    timeComplexity: string;
-    spaceComplexity: string;
-    explanation: string;
-  } | null>(null);
-  const [error, setError] = useState("");
-  const { toast } = useToast();
+  const [results, setResults] = useState<any | null>(null);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const allowedTypes = ['.py', '.cpp', '.js', '.java', '.c', '.ts', '.jsx', '.tsx'];
-    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-    
-    if (!allowedTypes.includes(fileExtension)) {
-      setError("Please upload a valid code file (.py, .cpp, .js, .java, .c, .ts, .jsx, .tsx)");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      setCode(content);
-      setError("");
-      toast({
-        title: "File uploaded successfully",
-        description: `Loaded ${file.name}`,
-      });
-    };
-    reader.readAsText(file);
-  };
-
-  const analyzeComplexity = async () => {
-    if (!code.trim()) {
-      setError("Please enter some code or upload a file to analyze");
-      return;
-    }
-
-    setIsAnalyzing(true);
-    setError("");
-    
-    // Simulate API call with heuristic analysis
-    setTimeout(() => {
-      // Simple heuristic analysis for demo
-      let timeComplexity = "O(n)";
-      let spaceComplexity = "O(1)";
-      let explanation = "Based on heuristic analysis of your code structure.";
-
-      if (code.includes("for") && code.includes("while")) {
-        timeComplexity = "O(n²)";
-        spaceComplexity = "O(n)";
-        explanation = "Detected nested loops, resulting in quadratic time complexity.";
-      } else if (code.includes("for") || code.includes("while")) {
-        timeComplexity = "O(n)";
-        explanation = "Detected single loop, resulting in linear time complexity.";
-      } else if (code.includes("sort") || code.includes("Sort")) {
-        timeComplexity = "O(n log n)";
-        explanation = "Detected sorting operation, typically O(n log n) complexity.";
-      } else if (code.includes("recursive") || code.includes("return") && code.includes("function")) {
-        timeComplexity = "O(2ⁿ)";
-        spaceComplexity = "O(n)";
-        explanation = "Potential recursive function detected, may have exponential time complexity.";
-      }
-
-      setResults({ timeComplexity, spaceComplexity, explanation });
-      setIsAnalyzing(false);
-      
-      toast({
-        title: "Analysis complete",
-        description: "Your code complexity has been analyzed",
-      });
-    }, 2000);
+  const handleAnalysis = (result: any) => {
+    setResults(result);
   };
 
   return (
@@ -124,144 +47,62 @@ const ComplexityAnalyzer = ({ onLogout }: ComplexityAnalyzerProps) => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Input Section */}
-          <div className="space-y-6">
-            <Card className="shadow-card border-border/50">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <FileText className="w-5 h-5" />
-                  <span>Code Input</span>
-                </CardTitle>
-                <CardDescription>
-                  Paste your code or upload a file to analyze its complexity
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* File Upload */}
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    className="flex items-center space-x-2"
-                    onClick={() => document.getElementById('file-upload')?.click()}
-                  >
-                    <Upload className="w-4 h-4" />
-                    <span>Upload File</span>
-                  </Button>
-                  <Badge variant="secondary" className="text-xs">
-                    .py, .cpp, .js, .java, .c, .ts
-                  </Badge>
-                </div>
-                
-                <input
-                  id="file-upload"
-                  type="file"
-                  accept=".py,.cpp,.js,.java,.c,.ts,.jsx,.tsx"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-
-                {/* Code Textarea */}
-                <Textarea
-                  placeholder="Paste your code here..."
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  className="min-h-[300px] font-mono text-sm bg-secondary/50"
-                />
-
-                {/* Error Display */}
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-
-                {/* Analyze Button */}
-                <Button
-                  onClick={analyzeComplexity}
-                  disabled={isAnalyzing}
-                  className="w-full h-12 bg-gradient-primary hover:opacity-90 transition-opacity font-semibold"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <Zap className="w-4 h-4 mr-2 animate-pulse" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="w-4 h-4 mr-2" />
-                      Analyze Complexity
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
+      <main className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          {/* Input Panel */}
+          <div className="xl:col-span-1">
+            <CodeInputPanel 
+              onAnalysis={handleAnalysis}
+              isAnalyzing={isAnalyzing}
+              setIsAnalyzing={setIsAnalyzing}
+            />
           </div>
 
-          {/* Results Section */}
-          <div className="space-y-6">
+          {/* Results Panel */}
+          <div className="xl:col-span-2 space-y-6">
             {results ? (
               <>
-                {/* Time Complexity Card */}
-                <Card className="shadow-card border-border/50 bg-gradient-to-br from-card to-card/80">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2 text-primary">
-                      <Clock className="w-5 h-5" />
-                      <span>Time Complexity</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-primary mb-2">
-                      {results.timeComplexity}
-                    </div>
-                    <p className="text-muted-foreground text-sm">
-                      Estimated computational time growth
-                    </p>
-                  </CardContent>
-                </Card>
+                {/* Performance Overview */}
+                <div className="flex items-center space-x-2 mb-4">
+                  <TrendingUp className="w-5 h-5 text-primary" />
+                  <h2 className="text-xl font-semibold text-foreground">Code Analysis Results</h2>
+                </div>
 
-                {/* Space Complexity Card */}
-                <Card className="shadow-card border-border/50 bg-gradient-to-br from-card to-card/80">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2 text-accent">
-                      <Database className="w-5 h-5" />
-                      <span>Space Complexity</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-accent mb-2">
-                      {results.spaceComplexity}
-                    </div>
-                    <p className="text-muted-foreground text-sm">
-                      Estimated memory usage growth
-                    </p>
-                  </CardContent>
-                </Card>
+                {/* Metrics Grid */}
+                <MetricsCard 
+                  timeComplexity={results.timeComplexity}
+                  spaceComplexity={results.spaceComplexity}
+                  cyclomaticComplexity={results.cyclomaticComplexity}
+                  cognitiveComplexity={results.cognitiveComplexity}
+                  maintainabilityIndex={results.maintainabilityIndex}
+                  linesOfCode={results.linesOfCode}
+                  duplicateCodePercentage={results.duplicateCodePercentage}
+                  language={results.language}
+                />
 
-                {/* Explanation Card */}
-                <Card className="shadow-card border-border/50">
-                  <CardHeader>
-                    <CardTitle>Analysis Explanation</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-foreground">{results.explanation}</p>
-                  </CardContent>
-                </Card>
+                {/* Suggestions and Issues */}
+                <SuggestionsPanel 
+                  suggestions={results.suggestions}
+                  securityIssues={results.securityIssues}
+                  performanceIssues={results.performanceIssues}
+                  explanation={results.explanation}
+                />
               </>
             ) : (
-              <Card className="shadow-card border-border/50 border-dashed">
-                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <Code className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
-                    Ready to Analyze
+              <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+                <div className="w-20 h-20 bg-gradient-primary rounded-full flex items-center justify-center">
+                  <Code className="w-10 h-10 text-primary-foreground" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-bold text-foreground">
+                    Advanced Code Analysis Ready
                   </h3>
-                  <p className="text-muted-foreground">
-                    Upload or paste your code to get started with complexity analysis
+                  <p className="text-muted-foreground max-w-md">
+                    Upload or paste your code to get comprehensive analysis including complexity metrics, 
+                    security issues, performance suggestions, and maintainability insights.
                   </p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
           </div>
         </div>
